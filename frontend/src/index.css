@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #060a14; color: #e2e8f0; }
+body { background: #060a14; color: #e2e8f0; font-family: 'Poppins', 'Segoe UI', sans-serif; }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

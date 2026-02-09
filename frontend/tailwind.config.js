@@ -19,7 +19,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["'Segoe UI'", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        sans: ["'Poppins'", "'Segoe UI'", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
         mono: ["'Cascadia Code'", "'Fira Code'", "monospace"],
       },
     },
