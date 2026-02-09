@@ -341,7 +341,8 @@ export default function App() {
   );
 
   // Show full-page loading when data hasn't loaded yet
-  if (loading && activities.length === 0) return (
+  // Use activities.length === 0 && !error (not just loading) to avoid empty dashboard flash after login
+  if (token && activities.length === 0 && !error) return (
     <div className="min-h-screen bg-surface-bg flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
