@@ -523,7 +523,7 @@ async function start() {
   });
 
   /**
-   * POST /api/explain — Get Claude AI explanation for an operation
+   * POST /api/explain — Get AI explanation for an operation (NVIDIA DeepSeek V3.2)
    */
   app.post("/api/explain", async (req, res) => {
     const { operation, category, user, workspace, item, timestamp, severity, success } = req.body;
@@ -532,10 +532,10 @@ async function start() {
       return res.status(400).json({ error: "Operation name required" });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.NVIDIA_API_KEY;
     if (!apiKey) {
       return res.status(503).json({
-        error: "Claude API not configured",
+        error: "NVIDIA API not configured",
         explanation: getStaticExplanation(operation, category)
       });
     }
@@ -564,32 +564,31 @@ What changed as a result? Be specific to the item "${item || "affected item"}".
 **Risk Level**
 Low/Medium/High - One sentence explaining the security/audit implication.`;
 
-
-      const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      const nvidiaRes = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
+          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "claude-3-haiku-20240307",
-          max_tokens: 400,
+          model: "deepseek-ai/deepseek-v3.2",
           messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          max_tokens: 500,
         }),
       });
 
-      if (!claudeRes.ok) {
-        const errText = await claudeRes.text();
-        console.error("Claude API error:", errText);
+      if (!nvidiaRes.ok) {
+        const errText = await nvidiaRes.text();
+        console.error("NVIDIA API error:", errText);
         return res.json({ explanation: getStaticExplanation(operation, category) });
       }
 
-      const claudeData = await claudeRes.json();
-      const explanation = claudeData.content?.[0]?.text || getStaticExplanation(operation, category);
+      const nvidiaData = await nvidiaRes.json();
+      const explanation = nvidiaData.choices?.[0]?.message?.content || getStaticExplanation(operation, category);
       res.json({ explanation });
     } catch (err) {
-      console.error("Claude API error:", err);
+      console.error("NVIDIA API error:", err);
       res.json({ explanation: getStaticExplanation(operation, category) });
     }
   });
