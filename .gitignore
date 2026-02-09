@@ -1,0 +1,8 @@
+node_modules/
+.env
+backend/data/
+frontend/dist/
+*.db
+.DS_Store
+nul
+%TEMP%*

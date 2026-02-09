@@ -1,0 +1,17 @@
+{
+  "name": "fabric-activity-monitor",
+  "version": "2.0.0",
+  "description": "Multi-tenant Microsoft Fabric / Power BI activity monitoring dashboard",
+  "private": true,
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev:backend": "cd backend && node src/server.js",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "echo 'Run in two terminals: npm run dev:backend  &  npm run dev:frontend'",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && NODE_ENV=production node src/server.js",
+    "extract": "cd backend && node scripts/manual-extract.js"
+  },
+  "keywords": ["fabric", "power-bi", "activity-log", "monitor", "dashboard"],
+  "license": "MIT"
+}

@@ -1,0 +1,20 @@
+{
+  "name": "fabric-activity-monitor-backend",
+  "version": "1.0.0",
+  "description": "Multi-tenant Power BI/Fabric Activity Log Monitor - Backend",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "extract": "node scripts/manual-extract.js"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.2.0",
+    "better-sqlite3": "^11.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.7.0"
+  }
+}
