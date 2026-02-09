@@ -78,10 +78,8 @@ export default function App() {
   // Debounce date changes - only update actual filters after 500ms of no changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (pendingFrom !== dateFrom || pendingTo !== dateTo) {
-        setDateFrom(pendingFrom);
-        setDateTo(pendingTo);
-      }
+      setDateFrom((prev) => prev !== pendingFrom ? pendingFrom : prev);
+      setDateTo((prev) => prev !== pendingTo ? pendingTo : prev);
     }, 500);
     return () => clearTimeout(timer);
   }, [pendingFrom, pendingTo]);
