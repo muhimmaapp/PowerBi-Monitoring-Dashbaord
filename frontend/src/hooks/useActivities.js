@@ -95,6 +95,7 @@ export function useActivities(dateRange, token, onAuthFail) {
   const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
 
   useEffect(() => {
+    if (!token) { setLoading(false); return; }
     async function fetchData() {
       setLoading(true);
       setError(null); // Clear any previous error
@@ -210,7 +211,7 @@ export function useActivities(dateRange, token, onAuthFail) {
       }
     }
     fetchData();
-  }, [from, to, fetchKey]);
+  }, [from, to, fetchKey, token]);
 
   return { activities, tenants, userStats, resolvedNames, dateBounds, loading, error, refetch };
 }

@@ -7,6 +7,7 @@
 
 require("dotenv").config();
 const express = require("express");
+const compression = require("compression");
 const cors = require("cors");
 const path = require("path");
 const fetch = require("node-fetch");
@@ -108,6 +109,7 @@ async function start() {
 
   // Initialize Express
   const app = express();
+  app.use(compression());
   app.use(cors());
   app.use(express.json());
 

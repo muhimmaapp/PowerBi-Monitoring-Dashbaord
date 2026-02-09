@@ -61,36 +61,6 @@ export default function App() {
     setAuthUser("");
   };
 
-  // Show login if not authenticated
-  if (!authChecked) return (
-    <div className="min-h-screen bg-surface-bg flex items-center justify-center">
-      <div className="text-tx-3 text-lg animate-pulse">Loading...</div>
-    </div>
-  );
-
-  if (!token) return (
-    <div className="min-h-screen bg-surface-bg flex items-center justify-center">
-      <form onSubmit={handleLogin} className="bg-[#131c36] border border-white/10 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-lg font-bold text-white">F</div>
-          <div className="text-lg font-bold text-white">Fabric Activity Monitor</div>
-        </div>
-        {loginError && <div className="mb-4 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{loginError}</div>}
-        <div className="mb-4">
-          <label className="block text-tx-3 text-sm mb-1.5">Username</label>
-          <input name="username" required autoFocus className="w-full bg-surface-input border border-white/10 rounded-lg px-3 py-2 text-white placeholder-tx-4 focus:outline-none focus:border-blue-500/50" />
-        </div>
-        <div className="mb-6">
-          <label className="block text-tx-3 text-sm mb-1.5">Password</label>
-          <input name="password" type="password" required className="w-full bg-surface-input border border-white/10 rounded-lg px-3 py-2 text-white placeholder-tx-4 focus:outline-none focus:border-blue-500/50" />
-        </div>
-        <button type="submit" disabled={loginLoading} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer">
-          {loginLoading ? "Signing in..." : "Sign In"}
-        </button>
-      </form>
-    </div>
-  );
-
   /* ── date range (with debouncing) ── */
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -99,10 +69,10 @@ export default function App() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const { activities, tenants, userStats, dateBounds, loading, error, refetch } = useActivities({ from: dateFrom, to: dateTo }, token, handleLogout);
 
-  // Track initial load completion
+  // Track initial load completion (only after we have a token and data loads)
   useEffect(() => {
-    if (!loading && isInitialLoad) setIsInitialLoad(false);
-  }, [loading, isInitialLoad]);
+    if (!loading && isInitialLoad && token && activities.length > 0) setIsInitialLoad(false);
+  }, [loading, isInitialLoad, token, activities.length]);
 
   // Debounce date changes - only update actual filters after 500ms of no changes
   useEffect(() => {
@@ -340,10 +310,43 @@ export default function App() {
   const hasActiveFilters = sev !== "all" || successFilter !== "all" || q || tenant !== "all" || userF !== "all" || dateFrom || dateTo;
   const clearAllFilters = () => { setTenant("all"); setUserF("all"); setSev("all"); setSuccessFilter("all"); setCat("all"); setQ(""); setDates("", ""); };
 
-  // Only show full-page loading on initial load
-  if (loading && isInitialLoad) return (
+  // ── Auth gates (after all hooks) ──
+  if (!authChecked) return (
     <div className="min-h-screen bg-surface-bg flex items-center justify-center">
-      <div className="text-tx-3 text-lg animate-pulse">Loading activity data...</div>
+      <div className="text-tx-3 text-lg animate-pulse">Loading...</div>
+    </div>
+  );
+
+  if (!token) return (
+    <div className="min-h-screen bg-surface-bg flex items-center justify-center">
+      <form onSubmit={handleLogin} className="bg-[#131c36] border border-white/10 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-lg font-bold text-white">F</div>
+          <div className="text-lg font-bold text-white">Fabric Activity Monitor</div>
+        </div>
+        {loginError && <div className="mb-4 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{loginError}</div>}
+        <div className="mb-4">
+          <label className="block text-tx-3 text-sm mb-1.5">Username</label>
+          <input name="username" required autoFocus className="w-full bg-surface-input border border-white/10 rounded-lg px-3 py-2 text-white placeholder-tx-4 focus:outline-none focus:border-blue-500/50" />
+        </div>
+        <div className="mb-6">
+          <label className="block text-tx-3 text-sm mb-1.5">Password</label>
+          <input name="password" type="password" required className="w-full bg-surface-input border border-white/10 rounded-lg px-3 py-2 text-white placeholder-tx-4 focus:outline-none focus:border-blue-500/50" />
+        </div>
+        <button type="submit" disabled={loginLoading} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer">
+          {loginLoading ? "Signing in..." : "Sign In"}
+        </button>
+      </form>
+    </div>
+  );
+
+  // Show full-page loading when data hasn't loaded yet
+  if (loading && activities.length === 0) return (
+    <div className="min-h-screen bg-surface-bg flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+        <div className="text-tx-3 text-lg">Loading activity data...</div>
+      </div>
     </div>
   );
 
