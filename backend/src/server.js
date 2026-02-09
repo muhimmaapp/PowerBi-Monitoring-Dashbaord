@@ -213,74 +213,7 @@ async function start() {
         filters.days = 30;
       }
 
-      const rawActivities = await queryActivities(filters);
-
-      // Enhance activities with fields from raw_json
-      const activities = rawActivities.map((a) => {
-        // Always try to extract fields from raw_json to fill in missing data
-        if (a.raw_json) {
-          try {
-            const raw = JSON.parse(a.raw_json);
-
-            // Helper to check if value is empty
-            const isEmpty = (v) => v === null || v === undefined || v === "" || v === "-";
-            const getFirst = (...vals) => vals.find((v) => v && v.trim && v.trim() !== "") || null;
-
-            // ClientIP - fill if empty
-            if (isEmpty(a.client_ip)) {
-              a.client_ip = getFirst(raw.ClientIP, raw.ClientIp, raw.clientIP, raw.IpAddress, raw.IPAddress);
-            }
-
-            // Workspace name - fill if empty
-            if (isEmpty(a.workspace_name)) {
-              a.workspace_name = getFirst(raw.WorkSpaceName, raw.WorkspaceName, raw.workspaceName, raw.FolderDisplayName, raw.LakehouseName);
-            }
-
-            // Item name - fill if empty or is a GUID
-            const isGuid = (v) => v && /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v);
-            if (isEmpty(a.item_name) || isGuid(a.item_name)) {
-              const itemName = getFirst(
-                raw.ArtifactName, raw.ReportName, raw.DashboardName,
-                raw.DatasetName, raw.DataflowName, raw.FileName,
-                raw.ItemName, raw.ModelName
-              );
-              if (itemName) {
-                a.item_name = itemName;
-              } else if (raw.ObjectType && !isGuid(raw.ObjectType)) {
-                a.item_name = raw.ObjectType;
-              }
-            }
-
-            // Item type - fill if empty
-            if (isEmpty(a.item_type)) {
-              a.item_type = getFirst(raw.ItemType, raw.ArtifactType, raw.ObjectType);
-            }
-
-            // User agent - fill if empty
-            if (isEmpty(a.user_agent)) {
-              a.user_agent = getFirst(raw.UserAgent, raw.userAgent, raw.Browser);
-            }
-
-            // Capacity name - fill if empty
-            if (isEmpty(a.capacity_name)) {
-              a.capacity_name = getFirst(raw.CapacityName);
-            }
-
-            // Extract detailed status information
-            a.result_status = raw.ResultStatus || raw.resultStatus || null;
-            a.failure_reason = raw.FailureReason || raw.ErrorMessage || raw.Error || raw.failureReason || null;
-            a.request_id = raw.RequestId || raw.requestId || null;
-            a.distribution_method = raw.DistributionMethod || raw.SharingAction || null;
-            a.consumed_artifact_type = raw.ConsumedArtifactType || raw.ArtifactType || null;
-          } catch {
-            // Ignore JSON parse errors
-          }
-        }
-
-        // Remove raw_json from response to reduce payload size
-        const { raw_json, ...rest } = a;
-        return rest;
-      });
+      const activities = await queryActivities(filters);
 
       res.json({
         count: activities.length,

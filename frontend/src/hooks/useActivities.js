@@ -100,8 +100,8 @@ export function useActivities(dateRange, token, onAuthFail) {
       setLoading(true);
       setError(null); // Clear any previous error
       try {
-        // Build activity URL with date params (no limit for full data)
-        let actUrl = "/api/activities?limit=100000";
+        // Build activity URL with date params
+        let actUrl = "/api/activities?limit=10000";
         if (from && to) {
           actUrl += `&from=${from}&to=${to}`;
         } else if (from) {

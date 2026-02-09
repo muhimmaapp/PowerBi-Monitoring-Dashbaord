@@ -46,6 +46,11 @@ async function initDatabase(config) {
       category VARCHAR(100),
       severity VARCHAR(20) DEFAULT 'info',
       raw_json LONGTEXT,
+      result_status VARCHAR(255) DEFAULT NULL,
+      failure_reason TEXT DEFAULT NULL,
+      request_id VARCHAR(255) DEFAULT NULL,
+      distribution_method VARCHAR(255) DEFAULT NULL,
+      consumed_artifact_type VARCHAR(255) DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE KEY unique_activity (activity_id, tenant_id),
       INDEX idx_date (date),
@@ -183,7 +188,11 @@ async function queryActivities(filters = {}) {
   const offset = filters.offset || 0;
 
   const sql = `
-    SELECT * FROM activities
+    SELECT activity_id, timestamp, date, operation, user_id, tenant_id, tenant_label,
+           workspace_name, item_name, item_type, capacity_name, client_ip, user_agent,
+           is_success, category, severity, result_status, failure_reason, request_id,
+           distribution_method, consumed_artifact_type
+    FROM activities
     WHERE ${where.join(" AND ")}
     ORDER BY timestamp DESC
     LIMIT ? OFFSET ?
