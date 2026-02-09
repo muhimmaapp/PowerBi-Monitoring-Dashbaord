@@ -73,7 +73,13 @@ function opLabel(operation, category) {
 }
 
 /* -- main hook ------------------------------- */
-export function useActivities(dateRange) {
+export function useActivities(dateRange, token, onAuthFail) {
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+  const authFetch = (url, opts = {}) =>
+    fetch(url, { ...opts, headers: { ...authHeaders, ...opts.headers } }).then((r) => {
+      if (r.status === 401 && onAuthFail) onAuthFail();
+      return r;
+    });
   const [activities, setActivities] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [userStats, setUserStats] = useState([]);
@@ -106,9 +112,9 @@ export function useActivities(dateRange) {
         }
 
         const [actRes, tenantRes, userRes] = await Promise.all([
-          fetch(actUrl),
-          fetch("/api/tenants"),
-          fetch("/api/activities/users?days=90"),
+          authFetch(actUrl),
+          authFetch("/api/tenants"),
+          authFetch("/api/activities/users?days=90"),
         ]);
         if (!actRes.ok) throw new Error("API unavailable");
         const actJson = await actRes.json();
@@ -118,7 +124,7 @@ export function useActivities(dateRange) {
         // Also fetch resolved names (non-blocking)
         let names = resolvedNames;
         try {
-          const resolveRes = await fetch("/api/users/resolve");
+          const resolveRes = await authFetch("/api/users/resolve");
           if (resolveRes.ok) {
             names = await resolveRes.json();
             setResolvedNames(names);
@@ -188,7 +194,7 @@ export function useActivities(dateRange) {
 
         // Fetch date bounds from API
         try {
-          const boundsRes = await fetch("/api/activities/bounds");
+          const boundsRes = await authFetch("/api/activities/bounds");
           if (boundsRes.ok) {
             const bounds = await boundsRes.json();
             setDateBounds({ min: bounds.min_date, max: bounds.max_date });

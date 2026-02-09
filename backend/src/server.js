@@ -10,6 +10,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fetch = require("node-fetch");
+const jwt = require("jsonwebtoken");
 
 const { initDatabase, queryActivities, getStats, getUserStats, getLastExtraction, getDateBounds } = require("./database");
 const { CATEGORIES } = require("./categorizer");
@@ -69,6 +70,28 @@ if (process.env.TENANT_ID_B && process.env.CLIENT_ID_B) {
 }
 
 // ═══════════════════════════════════════
+// Authentication
+// ═══════════════════════════════════════
+
+const JWT_SECRET = process.env.JWT_SECRET || "fabric-monitor-secret-change-me";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
+
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  try {
+    const token = authHeader.split(" ")[1];
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+
+// ═══════════════════════════════════════
 // Start
 // ═══════════════════════════════════════
 
@@ -97,6 +120,34 @@ async function start() {
   // ═══════════════════════════════════════
   // API Routes
   // ═══════════════════════════════════════
+
+  /**
+   * POST /api/login — Authenticate and get JWT token
+   */
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "7d" });
+      return res.json({ token, username });
+    }
+    return res.status(401).json({ error: "Invalid username or password" });
+  });
+
+  /**
+   * GET /api/auth/verify — Check if token is valid
+   */
+  app.get("/api/auth/verify", authMiddleware, (req, res) => {
+    res.json({ valid: true, username: req.user.username });
+  });
+
+  // Protect all routes below this point
+  app.use("/api", (req, res, next) => {
+    // Skip auth for login and health
+    if (req.path === "/login" || req.path === "/health" || req.path === "/auth/verify") {
+      return next();
+    }
+    authMiddleware(req, res, next);
+  });
 
   /**
    * GET /api/health — Server status

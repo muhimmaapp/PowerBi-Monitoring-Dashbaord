@@ -17,13 +17,87 @@ const UTYPE_COLORS = { user: "text-blue-400", service: "text-amber-400", system:
 const EXTRACT_COOLDOWN = 60; // seconds
 
 export default function App() {
+  /* ── auth state ── */
+  const [token, setToken] = useState(() => localStorage.getItem("fm_token") || "");
+  const [authUser, setAuthUser] = useState(() => localStorage.getItem("fm_user") || "");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Verify existing token on mount
+  useEffect(() => {
+    if (!token) { setAuthChecked(true); return; }
+    fetch("/api/auth/verify", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => { if (!r.ok) { setToken(""); setAuthUser(""); localStorage.removeItem("fm_token"); localStorage.removeItem("fm_user"); } })
+      .catch(() => {})
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError("");
+    setLoginLoading(true);
+    const form = new FormData(e.target);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: form.get("username"), password: form.get("password") }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setLoginError(data.error || "Login failed"); return; }
+      localStorage.setItem("fm_token", data.token);
+      localStorage.setItem("fm_user", data.username);
+      setToken(data.token);
+      setAuthUser(data.username);
+    } catch { setLoginError("Connection error"); }
+    finally { setLoginLoading(false); }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("fm_token");
+    localStorage.removeItem("fm_user");
+    setToken("");
+    setAuthUser("");
+  };
+
+  // Show login if not authenticated
+  if (!authChecked) return (
+    <div className="min-h-screen bg-surface-bg flex items-center justify-center">
+      <div className="text-tx-3 text-lg animate-pulse">Loading...</div>
+    </div>
+  );
+
+  if (!token) return (
+    <div className="min-h-screen bg-surface-bg flex items-center justify-center">
+      <form onSubmit={handleLogin} className="bg-[#131c36] border border-white/10 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-lg font-bold text-white">F</div>
+          <div className="text-lg font-bold text-white">Fabric Activity Monitor</div>
+        </div>
+        {loginError && <div className="mb-4 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{loginError}</div>}
+        <div className="mb-4">
+          <label className="block text-tx-3 text-sm mb-1.5">Username</label>
+          <input name="username" required autoFocus className="w-full bg-surface-input border border-white/10 rounded-lg px-3 py-2 text-white placeholder-tx-4 focus:outline-none focus:border-blue-500/50" />
+        </div>
+        <div className="mb-6">
+          <label className="block text-tx-3 text-sm mb-1.5">Password</label>
+          <input name="password" type="password" required className="w-full bg-surface-input border border-white/10 rounded-lg px-3 py-2 text-white placeholder-tx-4 focus:outline-none focus:border-blue-500/50" />
+        </div>
+        <button type="submit" disabled={loginLoading} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white font-semibold rounded-lg py-2.5 transition-colors cursor-pointer">
+          {loginLoading ? "Signing in..." : "Sign In"}
+        </button>
+      </form>
+    </div>
+  );
+
   /* ── date range (with debouncing) ── */
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [pendingFrom, setPendingFrom] = useState("");
   const [pendingTo, setPendingTo] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const { activities, tenants, userStats, dateBounds, loading, error, refetch } = useActivities({ from: dateFrom, to: dateTo });
+  const { activities, tenants, userStats, dateBounds, loading, error, refetch } = useActivities({ from: dateFrom, to: dateTo }, token, handleLogout);
 
   // Track initial load completion
   useEffect(() => {
@@ -99,14 +173,14 @@ export default function App() {
     setExtracting(true);
     setExtractMsg("Extracting...");
     try {
-      const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ days: 1, includeToday: true }) });
+      const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ days: 1, includeToday: true }) });
       const data = await res.json();
       if (res.ok) {
         setExtractMsg("Extraction started!");
         setCooldown(EXTRACT_COOLDOWN);
         // Poll for completion and refresh
         setTimeout(async () => {
-          const status = await fetch("/api/extract/status").then((r) => r.json());
+          const status = await fetch("/api/extract/status", { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
           if (!status.running) {
             setExtractMsg(`Done! ${status.eventsExtracted || 0} events`);
             refetch?.();
@@ -131,7 +205,7 @@ export default function App() {
     try {
       const res = await fetch("/api/explain", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           operation: activity.op,
           category: activity.cat,
@@ -300,6 +374,9 @@ export default function App() {
           {extractMsg && <span className="text-[11px] text-tx-3 ml-2">{extractMsg}</span>}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={handleLogout} className="px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/5 text-tx-3 hover:bg-white/10 hover:text-white transition-colors cursor-pointer" title={`Signed in as ${authUser}`}>
+            Logout
+          </button>
           {/* Date Presets & Range */}
           <div className="flex items-center gap-1 bg-surface-input border border-white/5 rounded-lg p-1">
             {[
