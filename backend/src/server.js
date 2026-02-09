@@ -523,7 +523,7 @@ async function start() {
   });
 
   /**
-   * POST /api/explain — Get AI explanation for an operation (NVIDIA DeepSeek V3.2)
+   * POST /api/explain — Get AI explanation for an operation (Google Gemini)
    */
   app.post("/api/explain", async (req, res) => {
     const { operation, category, user, workspace, item, timestamp, severity, success } = req.body;
@@ -532,10 +532,10 @@ async function start() {
       return res.status(400).json({ error: "Operation name required" });
     }
 
-    const apiKey = process.env.NVIDIA_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(503).json({
-        error: "NVIDIA API not configured",
+        error: "Gemini API not configured",
         explanation: getStaticExplanation(operation, category)
       });
     }
@@ -564,31 +564,26 @@ What changed as a result? Be specific to the item "${item || "affected item"}".
 **Risk Level**
 Low/Medium/High - One sentence explaining the security/audit implication.`;
 
-      const nvidiaRes = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "deepseek-ai/deepseek-v3.2",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.3,
-          max_tokens: 500,
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 500 },
         }),
       });
 
-      if (!nvidiaRes.ok) {
-        const errText = await nvidiaRes.text();
-        console.error("NVIDIA API error:", errText);
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        console.error("Gemini API error:", errText);
         return res.json({ explanation: getStaticExplanation(operation, category) });
       }
 
-      const nvidiaData = await nvidiaRes.json();
-      const explanation = nvidiaData.choices?.[0]?.message?.content || getStaticExplanation(operation, category);
+      const geminiData = await geminiRes.json();
+      const explanation = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || getStaticExplanation(operation, category);
       res.json({ explanation });
     } catch (err) {
-      console.error("NVIDIA API error:", err);
+      console.error("Gemini API error:", err);
       res.json({ explanation: getStaticExplanation(operation, category) });
     }
   });
