@@ -523,7 +523,7 @@ async function start() {
   });
 
   /**
-   * POST /api/explain — Get AI explanation for an operation (Google Gemini)
+   * POST /api/explain — Get AI explanation for an operation (OpenRouter)
    */
   app.post("/api/explain", async (req, res) => {
     const { operation, category, user, workspace, item, timestamp, severity, success } = req.body;
@@ -532,10 +532,10 @@ async function start() {
       return res.status(400).json({ error: "Operation name required" });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       return res.status(503).json({
-        error: "Gemini API not configured",
+        error: "OpenRouter API not configured",
         explanation: getStaticExplanation(operation, category)
       });
     }
@@ -564,26 +564,31 @@ What changed as a result? Be specific to the item "${item || "affected item"}".
 **Risk Level**
 Low/Medium/High - One sentence explaining the security/audit implication.`;
 
-      const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 500 },
+          model: "google/gemini-2.0-flash-exp:free",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          max_tokens: 500,
         }),
       });
 
-      if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        console.error("Gemini API error:", errText);
+      if (!orRes.ok) {
+        const errText = await orRes.text();
+        console.error("OpenRouter API error:", errText);
         return res.json({ explanation: getStaticExplanation(operation, category) });
       }
 
-      const geminiData = await geminiRes.json();
-      const explanation = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || getStaticExplanation(operation, category);
+      const orData = await orRes.json();
+      const explanation = orData.choices?.[0]?.message?.content || getStaticExplanation(operation, category);
       res.json({ explanation });
     } catch (err) {
-      console.error("Gemini API error:", err);
+      console.error("OpenRouter API error:", err);
       res.json({ explanation: getStaticExplanation(operation, category) });
     }
   });
